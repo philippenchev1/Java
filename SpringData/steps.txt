@@ -1,0 +1,80 @@
+1 IMPORT APPLCATION PROPERTIES
+
+2 IMPORT APPLICATION BEAN CONFIGURATION
+
+3 IMPORT BASE ENTITY
+
+4 IMPORT VALIDATION UTIL
+
+5 IMPORT VALIDATION UTIL IMPL
+
+6 IMPORT XML PARSER
+
+7 CREATE MODELS
+
+8 REPOSITORY WITH ANOTATION REPOSITORY, (extends JpaRepository<Car, Long>)
+
+9 IMPLEMENT SERVICES WITH ANOTATION SERVICE, CONSTRUCTOR REPOSITORY,
+
+	JSON 
+        private final ValidationUtil validationUtil;
+        private final ModelMapper modelMapper;
+        private final Gson gson;
+
+
+	XML 
+
+	 private final ValidationUtil validationUtil;
+         private final ModelMapper modelMapper;
+         private final XmlParser xmlParser;
+
+10 DTO
+
+11 SERVISEIMPL 
+
+  -- private statit final String LIBRARY_MEMBER_FILE_PATH = ....
+
+  -- ARE IMPORTED --
+ public boolean areImported() {
+        return this.borrowingRecordRepository.count() > 0;
+    }
+
+  -- READ FILES --  
+   @Override
+    public String readLibraryMembersFileContent() throws IOException {
+        return Files.readString(Path.of(LIBRARY_MEMBER_FILE_PATH));
+    }
+
+
+  -- IMPORT --
+    @Override
+    public String importLibraryMembers() throws IOException {
+        StringBuilder sb = new StringBuilder();
+
+        Arrays.stream(gson
+                        .fromJson(readLibraryMembersFileContent(), LibraryMemberImportDto[].class))
+                .filter(libraryMemberInsertDto -> {
+                    boolean isValid = validationUtils.isValid(libraryMemberInsertDto);
+
+                    Optional<LibraryMember> libraryMemberRepositoryByPhoneNumber = libraryMemberRepository.findByPhoneNumber(libraryMemberInsertDto.getPhoneNumber());
+                    if (libraryMemberRepositoryByPhoneNumber.isPresent()) {
+                        isValid = false;
+                    }
+
+                    sb.append(isValid
+                                    ? String.format("Successfully imported library member %s - %s", libraryMemberInsertDto.getFirstName()
+                                    , libraryMemberInsertDto.getLastName())
+                                    : "Invalid library member")
+                            .append(System.lineSeparator());
+
+                    return isValid;
+                })
+                .map(libraryMemberImportDto -> modelMapper.map(libraryMemberImportDto, LibraryMember.class))
+                .forEach(libraryMemberRepository::save);
+
+        return sb.toString().trim();
+    }
+
+  -- EXPORT --
+	
+
